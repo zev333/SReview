@@ -7,6 +7,7 @@ use feature "switch";
 
 use SReview::Talk;
 use SReview::Access qw/admin_for/;
+use DateTime::Format::Pg;
 
 sub view {
 	my $c = shift;
@@ -154,6 +155,29 @@ sub update {
         if($c->param("end_time") ne "end_time_ok") {
                 $talk->add_correction("offset_end", $c->param("end_time_corrval"));
                 $corrections->{end} = $c->param("end_time_corrval");
+        }
+        # Validate that corrected start time is before corrected end time
+        if($c->param("start_time") ne "start_time_ok" || $c->param("end_time") ne "end_time_ok") {
+                my $times = $talk->corrected_times;
+                my $orig_start = DateTime::Format::Pg->parse_datetime($times->{start});
+                my $orig_end = DateTime::Format::Pg->parse_datetime($times->{end});
+
+                my $start_offset = ($c->param("start_time") ne "start_time_ok")
+                        ? ($c->param("start_time_corrval") // 0)
+                        : 0;
+                my $end_offset = ($c->param("end_time") ne "end_time_ok")
+                        ? ($c->param("end_time_corrval") // 0)
+                        : 0;
+
+                my $new_start = $orig_start->clone->add(seconds => $start_offset);
+                my $new_end = $orig_end->clone->add(seconds => $end_offset);
+
+                if($new_start >= $new_end) {
+                        $c->stash(error => 'Invalid time correction: start time must be before end time.');
+                        $c->res->code(400);
+                        $c->render(variant => 'error');
+                        return;
+                }
         }
 	if(!defined($c->param("av_sync"))) {
 		$c->stash(error => 'Invalid submission data; missing parameter <t>av_sync</t>.');
