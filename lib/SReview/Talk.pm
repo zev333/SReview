@@ -649,6 +649,63 @@ sub _load_video_fragments {
 	return $rows;
 }
 
+=head2 video_gaps
+
+Returns a hashref with keys C<pre>, C<main>, and C<post>, each
+containing an arrayref of hashrefs describing the cumulative real-world
+gap at each video fragment boundary. Each entry has:
+
+=over
+
+=item video_offset
+
+The position in the concatenated video file (in seconds) where this
+fragment starts.
+
+=item cumulative_gap
+
+The total real-world gap (in seconds) accumulated before this fragment.
+
+=back
+
+This is used by the review UI to correctly map video file positions to
+real-world timestamps when there are gaps in the recording.
+
+=cut
+
+sub video_gaps {
+	my $self = shift;
+	my $corrections = $self->corrections;
+
+	my $st = $pg->db->dbh->prepare(
+		"SELECT talkid, extract(epoch from raw_length_corrected) AS duration, " .
+		"extract(epoch from (GREATEST(raw_start, talk_start) - talk_start)) AS real_world_offset " .
+		"FROM adjusted_raw_talks(?, make_interval(secs := ?::numeric), make_interval(secs := ?::numeric)) " .
+		"ORDER BY talk_start, raw_start"
+	);
+	$st->execute($self->talkid, $corrections->{"offset_start"}, $corrections->{"length_adj"});
+
+	my %fragments;
+	while(my $row = $st->fetchrow_hashref()) {
+		my $key = $row->{talkid} == -1 ? 'pre' : $row->{talkid} == -2 ? 'post' : 'main';
+		push @{$fragments{$key}}, $row;
+	}
+
+	my %result;
+	for my $key (qw(pre main post)) {
+		my @gaps;
+		my $video_offset = 0;
+		for my $row (@{$fragments{$key} || []}) {
+			my $cumulative_gap = $row->{real_world_offset} - $video_offset;
+			push @gaps, { video_offset => $video_offset, cumulative_gap => $cumulative_gap };
+			$video_offset += $row->{duration};
+		}
+		$result{$key} = \@gaps;
+	}
+
+	return \%result;
+}
+
 =head2 avs_video_fragments
 
 The same values as the video_fragments attribute, but with every length

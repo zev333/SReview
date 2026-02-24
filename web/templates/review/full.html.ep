@@ -667,6 +667,24 @@
       data.new_end = newtime;
     }
 
+    // Map a video file position to real-world offset from the video's
+    // start, accounting for gaps in the recording.
+    // videoType is one of "pre", "main", or "post".
+    function videoTimeToRealWorldOffset(videoTime, videoType) {
+      var gaps = data.video_gaps && data.video_gaps[videoType];
+      if (!gaps || gaps.length === 0) {
+        return videoTime;
+      }
+      var cumulative_gap = 0;
+      for (var i = gaps.length - 1; i >= 0; i--) {
+        if (videoTime >= gaps[i].video_offset) {
+          cumulative_gap = gaps[i].cumulative_gap;
+          break;
+        }
+      }
+      return videoTime + cumulative_gap;
+    }
+
     function clamp(val, min, max) {
       return Math.min(max, Math.max(min, val));
     }
@@ -893,7 +911,8 @@
 
     // handle time set button clicks. TODO: generalize this.
     $("#start_time_early").click(function() {
-      setStartTime($("#msg_start_early"), $("#err_start_early"), $("#video-start-early").get(0).currentTime);
+      var realWorldOffset = videoTimeToRealWorldOffset($("#video-start-early").get(0).currentTime, "main");
+      setStartTime($("#msg_start_early"), $("#err_start_early"), realWorldOffset);
     });
 
     $("#start-missing, #end-missing").click(function() {
@@ -903,24 +922,27 @@
     $("#start_time_late").click(function() {
       var elem = $("#video-start-late").get(0);
       if($("#start-missing").is(":checked")) {
-        setStartTime($("#msg_start_late"), $("#err_start_late"), 0 - elem.duration);
+        var totalRealWorld = videoTimeToRealWorldOffset(elem.duration, "pre");
+        setStartTime($("#msg_start_late"), $("#err_start_late"), 0 - totalRealWorld);
       } else {
-        setStartTime($("#msg_start_late"), $("#err_start_late"), 0 - (elem.duration - elem.currentTime));
+        var remainingRealWorld = videoTimeToRealWorldOffset(elem.duration, "pre") - videoTimeToRealWorldOffset(elem.currentTime, "pre");
+        setStartTime($("#msg_start_late"), $("#err_start_late"), 0 - remainingRealWorld);
       }
     });
 
     $("#end_time_early").click(function() {
       if($("#end-missing").is(":checked")) {
-        setEndTime($("#msg_end_early"), $("#err_end_early"), $("#video-end-early").get(0).duration);
+        setEndTime($("#msg_end_early"), $("#err_end_early"), videoTimeToRealWorldOffset($("#video-end-early").get(0).duration, "post"));
       } else {
-        setEndTime($("#msg_end_early"), $("#err_end_early"), $("#video-end-early").get(0).currentTime);
+        setEndTime($("#msg_end_early"), $("#err_end_early"), videoTimeToRealWorldOffset($("#video-end-early").get(0).currentTime, "post"));
       }
     });
 
     $("#end_time_late").click(function() {
       var elem = $("#video-end-late").get(0);
-      vidend = Date.parse(data.video_start) + elem.duration * 1000;
-      setEndTime($("#msg_end_late"), $("#err_end_late"), 0 - (elem.duration - elem.currentTime) - (Date.parse(data.video_end) - vidend) / 1000);
+      var realWorldOffset = videoTimeToRealWorldOffset(elem.currentTime, "main");
+      var scheduledLength = (Date.parse(data.video_end) - Date.parse(data.video_start)) / 1000;
+      setEndTime($("#msg_end_late"), $("#err_end_late"), realWorldOffset - scheduledLength);
     });
 
     // show / hide the no audio options
