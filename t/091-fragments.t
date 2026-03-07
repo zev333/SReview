@@ -96,6 +96,17 @@ SKIP: {
 		cmp_ok(sum_len($rows, -1), '==', $twenty, 'pre total is 20 minutes when available in one file');
 		cmp_ok(sum_len($rows, 1), '==', $main_expected, 'main total is full talk length when available');
 		cmp_ok(sum_len($rows, -2), '==', $twenty, 'post total is 20 minutes when available in one file');
+
+		my $gaps = $talk->video_gaps;
+		cmp_deeply($gaps->{pre}, [
+			{ video_offset => num(0, 0.01), cumulative_gap => num(0, 0.01) },
+		], 'video_gaps pre has no gaps (single file)');
+		cmp_deeply($gaps->{main}, [
+			{ video_offset => num(0, 0.01), cumulative_gap => num(0, 0.01) },
+		], 'video_gaps main has no gaps (single file)');
+		cmp_deeply($gaps->{post}, [
+			{ video_offset => num(0, 0.01), cumulative_gap => num(0, 0.01) },
+		], 'video_gaps post has no gaps (single file)');
 	}
 
 	# Scenario 2: Pre spans multiple raw files but totals >= 20 minutes
@@ -185,6 +196,18 @@ SKIP: {
 		cmp_ok(sum_len($rows, 1), '==', 7, 'main total is reduced if there is a gap inside main');
 		cmp_ok(sum_len($rows, -1), '==', $twenty, 'pre total equals 20 minutes');
 		cmp_ok(sum_len($rows, -2), '==', $twenty, 'post total equals 20 minutes');
+
+		my $gaps = $talk->video_gaps;
+		cmp_deeply($gaps->{main}, [
+			{ video_offset => num(0, 0.01), cumulative_gap => num(0, 0.01) },
+			{ video_offset => num(5, 0.01), cumulative_gap => num(3, 0.01) },
+		], 'video_gaps main has 2 entries with correct offsets and gaps');
+		cmp_deeply($gaps->{pre}, [
+			{ video_offset => num(0, 0.01), cumulative_gap => num(0, 0.01) },
+		], 'video_gaps pre has 1 entry with gap 0');
+		cmp_deeply($gaps->{post}, [
+			{ video_offset => num(0, 0.01), cumulative_gap => num(0, 0.01) },
+		], 'video_gaps post has 1 entry with gap 0');
 	}
 }
 

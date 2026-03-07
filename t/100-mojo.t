@@ -16,7 +16,7 @@ BEGIN {
 	}
 }
 
-use Test::More tests => 51;
+use Test::More tests => 56;
 use Test::Mojo;
 use Mojo::File qw/path/;
 use SReview::Talk;
@@ -26,7 +26,7 @@ use SReview::Web;
 my $cfgname = path()->to_abs->child('config.pm');
 
 SKIP: {
-	skip("Need a database to play with", 51) unless (exists($ENV{SREVIEWTEST_DB}) or exists($ENV{SREVIEWTEST_INSTALLED}) or exists($ENV{AUTOPKGTEST_TMP}));
+	skip("Need a database to play with", 56) unless (exists($ENV{SREVIEWTEST_DB}) or exists($ENV{SREVIEWTEST_INSTALLED}) or exists($ENV{AUTOPKGTEST_TMP}));
 
 	my $script = path(__FILE__);
 	$script = $script->dirname->child('..')->child('web')->child('sreview-web')->to_abs;
@@ -53,7 +53,12 @@ SKIP: {
 	  ->json_is("/end" => $talk->corrected_times->{end})
 	  ->json_is("/start" => $talk->corrected_times->{start})
 	  ->json_is("/end_iso" => $talk->corrected_times->{end_iso})
-	  ->json_is("/start_iso" => $talk->corrected_times->{start_iso});
+	  ->json_is("/start_iso" => $talk->corrected_times->{start_iso})
+	  ->json_has("/video_gaps")
+	  ->json_has("/video_gaps/pre")
+	  ->json_has("/video_gaps/main")
+	  ->json_has("/video_gaps/post")
+	  ->json_is("/video_gaps/main/0/cumulative_gap" => 0);
 
 	my $video = Media::Convert::Asset->new(url => $talk->outname . ".mkv");
 
