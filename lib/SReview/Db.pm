@@ -1413,6 +1413,21 @@ ALTER TABLE talks ADD total_steps INTEGER;
 -- 33 down
 ALTER TABLE talks DROP current_step;
 ALTER TABLE talks DROP total_steps;
+-- 34 up
+ALTER TABLE talks ADD reviewer_seen TIMESTAMP WITH TIME ZONE;
+UPDATE talks SET reviewer_seen = now() WHERE reviewer IS NOT NULL;
+CREATE FUNCTION reviewer_seen_on_preview() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  NEW.reviewer_seen = now();
+  RETURN NEW;
+END $$;
+CREATE TRIGGER reviewer_seen_on_preview BEFORE UPDATE OF state ON talks FOR EACH ROW WHEN (NEW.state = 'preview' AND OLD.state IS DISTINCT FROM NEW.state AND NEW.reviewer IS NOT NULL) EXECUTE PROCEDURE reviewer_seen_on_preview();
+-- 34 down
+DROP TRIGGER reviewer_seen_on_preview ON talks;
+DROP FUNCTION reviewer_seen_on_preview();
+ALTER TABLE talks DROP reviewer_seen;
 @@ code
 -- 1 up
 CREATE VIEW last_room_files AS

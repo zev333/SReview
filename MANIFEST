@@ -109,6 +109,7 @@ t/091-fragments.t
 t/095-files.t
 t/095-synfig.t
 t/100-mojo.t
+t/101-volunteer.t
 t/110-api.t
 t/115-credit-previews.t
 t/120-types.t

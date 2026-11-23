@@ -82,6 +82,8 @@ sub setup {
 	$config->define("adminuser", 'email address for the initial admin user created. Note: if this user is removed and this configuration value continues to exist, then the user will be recreated upon the next database initialization (which might be rather quick).', undef);
 	$config->define('adminpw', 'password for the admin user. See under "adminuser" for details.', undef);
 	$config->define('review_template', 'The template name to be used for the review page. Can be one of "full" (full editing capabilities) or "confirm" (confirmation only). Defaults to "full", unless the talk was injected, in which case it defaults to "confirm".', undef);
+	$config->define('volunteer_release_after', 'How long a talk stays locked to a user of /volunteer/list without activity before it is handed to someone else, as a PostgreSQL interval (e.g. "48 hours"). Activity is claiming the talk, opening its review page while logged in, or submitting a review. Talks held by volunteer_skip_user are never released. Set to undef to never release talks.', '48 hours');
+	$config->define('volunteer_skip_user', 'Email address of the user that receives talks a review volunteer chose to skip. If undef, volunteers cannot skip talks.', undef);
 	$config->define('inject_fatal_checks', 'Checks to be run on an uploaded video. When a check fails, the upload is rejected. Same syntax as for inject_transcode_skip_checks.', {});
 
 	$config->define('force_preview_transcode', 'If set to nonzero, forces sreview-previews to transcode the video, even if the input video file is HTML video compatible. Use this if the input video format uses a very large bitrate.', 0);

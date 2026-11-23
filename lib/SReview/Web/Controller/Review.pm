@@ -8,6 +8,12 @@ use feature "switch";
 use SReview::Talk;
 use SReview::Access qw/admin_for/;
 
+sub mark_seen {
+	my ($c, $talk) = @_;
+	return unless defined($c->session->{id});
+	$c->dbh->prepare("UPDATE talks SET reviewer_seen = now() WHERE id = ? AND reviewer = ?")->execute($talk->talkid, $c->session->{id});
+}
+
 sub view {
 	my $c = shift;
 
@@ -26,6 +32,7 @@ sub view {
                 $c->render(variant => 'error');
                 return;
         }
+        $c->mark_seen($talk);
         my $nonce = $talk->nonce;
 	my $variant;
 	if ($talk->state eq 'preview' || $talk->state eq 'broken') {
@@ -76,12 +83,22 @@ sub update {
                         return $c->render(variant => 'error');
                 }
 	}
+        $c->mark_seen($talk);
         $c->stash(talk => $talk);
         if(!admin_for($c, $talk) && $talk->state ne 'preview' && $talk->state ne 'broken') {
                 $c->stash(error => 'This talk is not currently available for review. Please try again later!');
                 $c->render(variant => 'error');
 		$c->res->code(403);
                 return;
+        }
+        if($c->session->{volunteer}) {
+                my ($reviewer) = $c->dbh->selectrow_array("SELECT reviewer FROM talks WHERE id = ?", undef, $talk->talkid);
+                if(defined($reviewer) && $reviewer != $c->session->{id}) {
+                        $c->stash(error => 'This talk was assigned to another reviewer after a period of inactivity. Please go back to your list of talks.');
+                        $c->res->code(409);
+                        $c->render(variant => 'error');
+                        return;
+                }
         }
         my $old_audio_channel = $talk->corrections->{audio_channel};
         $talk->add_correction(serial => 0);

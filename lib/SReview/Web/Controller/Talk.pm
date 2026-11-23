@@ -17,6 +17,8 @@ use SReview::Talk;
 
 sub format_talks($c, $talks) {
 	foreach my $talk(@$talks) {
+		# internal bookkeeping for /volunteer/list, not part of the API
+		delete($talk->{reviewer_seen});
 		$talk->{starttime} = DateTime::Format::ISO8601->format_datetime(DateTime::Format::Pg->parse_timestamptz($talk->{starttime}));
 		$talk->{endtime} = DateTime::Format::ISO8601->format_datetime(DateTime::Format::Pg->parse_timestamptz($talk->{endtime}));
 		if($talk->{flags}) {
@@ -34,6 +36,7 @@ sub format_talks($c, $talks) {
 
 sub fixup {
 	my $talk = shift;
+	delete($talk->{reviewer_seen});
 	if($talk->{flags}) {
 		$talk->{flags} = decode_json($talk->{flags});
 	}

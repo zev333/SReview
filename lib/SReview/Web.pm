@@ -362,6 +362,7 @@ sub startup {
 	});
 
 	$vol->get('/list')->to('volunteer#list');
+	$vol->post('/skip/:talk' => [talk => qr/\d+/])->to('volunteer#skip');
 
 	my $admin = $r->under('/admin' => sub {
 		my $c = shift;

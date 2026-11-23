@@ -50,8 +50,12 @@ conference. That is, you expect to have no more than a handful of talks.
     - If you do *not* set that option, but create review volunteer users
       through the webinterface, then these users can go to the
       `/volunteer/list` URL, where they will receive a number of talks. These
-      talks will be locked to them; the reviewers will have to finish the
-      review.
+      talks will be locked to them. If a volunteer shows no activity on a
+      locked talk for `volunteer_release_after` (default 48 hours), the
+      talk is released and goes to the next volunteer who opens the list.
+      If `volunteer_skip_user` is set to the email address of an existing
+      user, volunteers can also skip a talk; it is then locked to that
+      user instead, and never released automatically.
     - If you add email addresses to speakers and/or track managers in
       the SReview database, and set the `notify_actions` configuration
       value to an array including `email`, the `email_template` variable
